@@ -63,7 +63,7 @@ impl fmt::Display for Error {
 
 #[cfg(target_os = "windows")]
 fn get_last_error() -> String {
-    unsafe {windows_sys::Win32::Foundation::GetLastError().to_string()}
+    unsafe { windows_sys::Win32::Foundation::GetLastError().to_string() }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -87,16 +87,19 @@ struct FuncList {
 #[cfg(target_os = "windows")]
 fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
     unsafe {
-        std::mem::transmute(windows_sys::Win32::System::LibraryLoader::GetProcAddress(handle, name.as_ptr()))
+        std::mem::transmute(
+            windows_sys::Win32::System::LibraryLoader::GetProcAddress(
+                handle,
+                name.as_ptr(),
+            ),
+        )
     }
 }
 
 #[cfg(not(target_os = "windows"))]
 fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
     let fname = CString::new(name).unwrap();
-    unsafe {
-        libc::dlsym(handle, fname.as_ptr())
-    }
+    unsafe { libc::dlsym(handle, fname.as_ptr()) }
 }
 
 impl FuncList {
@@ -105,9 +108,8 @@ impl FuncList {
         name: &str,
     ) -> Result<FuncList, String> {
         let list_fn: CK_C_GetFunctionList = unsafe {
-
             let ptr = get_symbol(handle, name);
-            
+
             if ptr.is_null() {
                 None
             } else {
@@ -1038,7 +1040,9 @@ struct Arguments {
 #[cfg(target_os = "windows")]
 fn load_library(library_name: &str) -> *mut c_void {
     unsafe {
-        windows_sys::Win32::System::LibraryLoader::LoadLibraryA(library_name.as_ptr())
+        windows_sys::Win32::System::LibraryLoader::LoadLibraryA(
+            library_name.as_ptr(),
+        )
     }
 }
 
@@ -1046,9 +1050,7 @@ fn load_library(library_name: &str) -> *mut c_void {
 fn load_library(library_name: &str) -> *mut c_void {
     let soname = CString::new(library_name).unwrap();
     let rtld_flags = libc::RTLD_LOCAL | libc::RTLD_NOW;
-    unsafe {
-        libc::dlopen(soname.as_c_str().as_ptr(), rtld_flags)
-    }
+    unsafe { libc::dlopen(soname.as_c_str().as_ptr(), rtld_flags) }
 }
 
 fn main() -> ExitCode {
@@ -1057,7 +1059,7 @@ fn main() -> ExitCode {
     /* Let's try to load the library */
     let library_name = args.pkcs11_module;
     let lib_handle = load_library(library_name.as_str());
-    
+
     if lib_handle.is_null() {
         eprintln!("Failed to load pkcs11 module: {}", get_last_error());
         return ExitCode::from(0xFF);

@@ -142,7 +142,6 @@ fn get_kryoptic_build_args(build_ossl: bool) -> Vec<String> {
     let mut args = vec!["-std=c90".to_string()];
 
     if build_ossl || cfg!(target_os = "windows") {
-
         let openssl_path = get_openssl_path();
 
         let include_path = format!(
@@ -163,9 +162,8 @@ fn get_kryoptic_build_args(build_ossl: bool) -> Vec<String> {
 }
 
 fn build_ossl(features: &Features, out_file: &Path) {
-
     let openssl_path = get_openssl_path();
-    
+
     let mut buildargs = vec![
         "no-deprecated",
         "no-aria",
@@ -280,7 +278,7 @@ fn build_ossl(features: &Features, out_file: &Path) {
     }
 
     let mut kryoptic_build_args = get_kryoptic_build_args(false);
-    
+
     if features.fips {
         kryoptic_build_args.push("-D_KRYOPTIC_FIPS_".to_string());
     }
