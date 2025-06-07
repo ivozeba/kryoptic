@@ -432,9 +432,10 @@ impl NSSStorage {
         if attrs.len() == 0 {
             columns = "*".to_string();
         } else {
-            let formatter = attrs
-                .iter()
-                .format_with(", ", |a, f| f(&format_args!("a{:x}", a.type_)));
+            let formatter = attrs.iter().format_with(", ", |a, f| {
+                let attribute_type = a.type_;
+                f(&format_args!("a{:x}", attribute_type))
+            });
             columns = format!("{}", formatter);
         }
         let mut query = NSSSearchQuery {

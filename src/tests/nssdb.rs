@@ -231,7 +231,8 @@ fn test_nssdb_init_token() {
             template.len() as CK_ULONG,
         );
         assert_eq!(ret, CKR_OK);
-        assert_eq!(template[0].ulValueLen, 6);
+        let attribute_length = template[0].ulValueLen;
+        assert_eq!(attribute_length, 6);
         let mut value = vec![0u8; 6];
         template[0].pValue = void_ptr!(value.as_mut_ptr());
         let ret = fn_get_attribute_value(
@@ -278,7 +279,8 @@ fn test_nssdb_init_token() {
         template.len() as CK_ULONG,
     );
     assert_eq!(ret, CKR_OK);
-    assert_eq!(template[0].ulValueLen, 5);
+    let attribute_length = template[0].ulValueLen;
+    assert_eq!(attribute_length, 5);
     let mut value = vec![0u8; 5];
     template[0].pValue = void_ptr!(value.as_mut_ptr());
     let ret = fn_get_attribute_value(

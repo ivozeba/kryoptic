@@ -233,12 +233,20 @@ fn build_ossl(features: &Features, out_file: &Path) {
             .expect("OpenSSL providers path unavailable");
     } else {
         ar_path = openssl_path.clone();
-        ar_name = "crypto";
+        ar_name = if cfg!(target_os = "windows") {
+            "libcrypto"
+        } else {
+            "crypto"
+        };
     }
 
     buildargs.push(&defines);
 
-    let libpath = format!("{}/lib{}.a", ar_path.to_string_lossy(), ar_name);
+    let libpath = if cfg!(target_os = "windows") {
+        format!("{}\\{}.lib", ar_path.to_string_lossy(), ar_name)
+    } else {
+        format!("{}/lib{}.a", ar_path.to_string_lossy(), ar_name)
+    };
 
     println!("cargo:rustc-link-search={}", ar_path.to_string_lossy());
     println!("cargo:rustc-link-lib=static={}", ar_name);
