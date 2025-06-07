@@ -83,6 +83,24 @@ To run the tests, run the test command:
 
 This command accepts the same feature set as the build command
 
+# Running Kryoptic
+
+Kryoptic searches for a toml configuration file in the following locations by default:
+
+- `${XDG_CONFIG_HOME}/kryoptic/token.conf`
+- `${HOME}/.config/kryoptic/token.conf`
+
+Set the environment variable `KRYOPTIC_CONF` to override the configuration file. The
+following is a sample configuration file that has a single slot (slot 1) backed by 
+a sqlite database stored as `./kryoptic.sql`:
+
+```
+[[slots]]
+slot = 1
+dbtype = "sqlite"
+dbargs = "kryoptic.sql"
+```
+
 # License
 
 The license is currently set as the GPLv3.0+ as released by the FSF.
