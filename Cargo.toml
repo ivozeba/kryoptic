@@ -60,6 +60,7 @@ serde_json = "1.0.104"
 serial_test = "3.1.1"
 toml = { version = "0.8.19", default-features = false, features = ["display", "parse"] }
 uuid = { version = "1.4.1", features = ["v4"] }
+windows-sys = { version = "0.59.0", features = ["Win32", "Win32_System", "Win32_System_LibraryLoader"] }
 
 [features]
 aes = []

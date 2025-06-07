@@ -107,7 +107,7 @@ impl bindgen::callbacks::ParseCallbacks for OsslCallbacks {
     }
 }
 
-fn ossl_bindings(args: &[&str], out_file: &Path) {
+fn ossl_bindings(args: Vec<String>, out_file: &Path) {
     bindgen::Builder::default()
         .header("ossl.h")
         .clang_args(args)
@@ -130,13 +130,42 @@ fn ossl_bindings(args: &[&str], out_file: &Path) {
         .expect("Couldn't write bindings!");
 }
 
-fn build_ossl(features: &Features, out_file: &Path) {
+fn get_openssl_path() -> PathBuf {
     let sources = std::env::var("KRYOPTIC_OPENSSL_SOURCES")
         .expect("Env var KRYOPTIC_OPENSSL_SOURCES is not defined");
-    let openssl_path = std::path::PathBuf::from(sources)
+    std::path::PathBuf::from(sources.clone())
         .canonicalize()
-        .expect("cannot canonicalize OpenSSL path");
+        .expect("cannot canonicalize OpenSSL path")
+}
 
+fn get_kryoptic_build_args(build_ossl: bool) -> Vec<String> {
+    let mut args = vec!["-std=c90".to_string()];
+
+    if build_ossl || cfg!(target_os = "windows") {
+
+        let openssl_path = get_openssl_path();
+
+        let include_path = format!(
+            "-I{}",
+            openssl_path
+                .join("include")
+                .canonicalize()
+                .expect("OpenSSL include path unavailable")
+                .to_str()
+                .unwrap()
+                .replace("\\\\?\\", "")
+        );
+
+        args.push(include_path);
+    }
+
+    args
+}
+
+fn build_ossl(features: &Features, out_file: &Path) {
+
+    let openssl_path = get_openssl_path();
+    
     let mut buildargs = vec![
         "no-deprecated",
         "no-aria",
@@ -250,27 +279,25 @@ fn build_ossl(features: &Features, out_file: &Path) {
         }
     }
 
-    let include_path = format!(
-        "-I{}",
-        openssl_path
-            .join("include")
-            .canonicalize()
-            .expect("OpenSSL include path unavailable")
-            .to_str()
-            .unwrap()
-    );
-
-    let mut args = vec![&include_path, "-std=c90"];
+    let mut kryoptic_build_args = get_kryoptic_build_args(false);
+    
     if features.fips {
-        args.push("-D_KRYOPTIC_FIPS_");
+        kryoptic_build_args.push("-D_KRYOPTIC_FIPS_".to_string());
     }
 
-    ossl_bindings(&args, out_file);
+    ossl_bindings(kryoptic_build_args.to_vec(), out_file);
 }
 
 fn use_system_ossl(out_file: &Path) {
-    println!("cargo:rustc-link-lib=crypto");
-    ossl_bindings(&["-std=c90"], out_file);
+    let ar_name = if cfg!(target_os = "windows") {
+        let openssl_path = get_openssl_path();
+        println!("cargo:rustc-link-search={}", openssl_path.to_string_lossy());
+        "libcrypto"
+    } else {
+        "crypto"
+    };
+    println!("cargo:rustc-link-lib={}", ar_name);
+    ossl_bindings(get_kryoptic_build_args(false), out_file);
 }
 
 fn set_pretty_panic() {

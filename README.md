@@ -8,7 +8,8 @@ This is a pkcs11 soft token written in rust.
 
 Note, the default feature links against the system installed OpenSSL
 libraries, you need the OpenSSL development packages to build with
-the default features selection.
+the default features selection. For windows ensure that the openssl
+and sqlite directories are defined in the path environment variable.
 
 # Setup
 
@@ -17,9 +18,9 @@ of OpenSSL; alternatively the build system can be pointed to OpenSSL
 sources to generate a build with the crypto library statically linked
 into the binaries.
 
-For builds that need to include a static build of OpenSSL, download and
-unpack the desired version and set the env var KRYOPTIC_OPENSSL_SOURCES
-to the path where the source were unpacked.
+For builds that need to include a static build of OpenSSL and on 
+Windows, download and unpack the desired version and set the env var 
+KRYOPTIC_OPENSSL_SOURCES to the path where the source were unpacked.
 
 Example:
 

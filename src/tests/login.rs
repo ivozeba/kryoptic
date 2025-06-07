@@ -19,7 +19,8 @@ fn test_login() {
     };
     let ret = fn_get_session_info(session, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RO_PUBLIC_SESSION);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RO_PUBLIC_SESSION);
 
     let mut session2: CK_SESSION_HANDLE = CK_UNAVAILABLE_INFORMATION;
     let ret = fn_open_session(
@@ -33,7 +34,8 @@ fn test_login() {
 
     let ret = fn_get_session_info(session2, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RW_PUBLIC_SESSION);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RW_PUBLIC_SESSION);
 
     let pin_flags_mask = CKF_SO_PIN_TO_BE_CHANGED
         | CKF_SO_PIN_LOCKED
@@ -105,11 +107,13 @@ fn test_login() {
 
     let ret = fn_get_session_info(session, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RO_USER_FUNCTIONS);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RO_USER_FUNCTIONS);
 
     let ret = fn_get_session_info(session2, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RW_USER_FUNCTIONS);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RW_USER_FUNCTIONS);
 
     let ret = fn_login(
         session,
@@ -124,11 +128,13 @@ fn test_login() {
 
     let ret = fn_get_session_info(session, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RO_PUBLIC_SESSION);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RO_PUBLIC_SESSION);
 
     let ret = fn_get_session_info(session2, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RW_PUBLIC_SESSION);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RW_PUBLIC_SESSION);
 
     let ret = fn_logout(session);
     assert_eq!(ret, CKR_USER_NOT_LOGGED_IN);
@@ -156,7 +162,8 @@ fn test_login_close() {
         };
         let ret = fn_get_session_info(session, &mut info);
         assert_eq!(ret, CKR_OK);
-        assert_eq!(info.state, CKS_RW_PUBLIC_SESSION);
+        let info_state = info.state;
+        assert_eq!(info_state, CKS_RW_PUBLIC_SESSION);
 
         /* login */
         let pin = "12345678";
@@ -170,7 +177,8 @@ fn test_login_close() {
 
         let ret = fn_get_session_info(session, &mut info);
         assert_eq!(ret, CKR_OK);
-        assert_eq!(info.state, CKS_RW_USER_FUNCTIONS);
+        let info_state = info.state;
+        assert_eq!(info_state, CKS_RW_USER_FUNCTIONS);
 
         /* close session should reset the login state */
         testtokn.close_session();
@@ -200,7 +208,8 @@ fn test_login_close_all() {
     };
     let ret = fn_get_session_info(session, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RW_PUBLIC_SESSION);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RW_PUBLIC_SESSION);
 
     /* login */
     let pin = "12345678";
@@ -214,7 +223,8 @@ fn test_login_close_all() {
 
     let ret = fn_get_session_info(session, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RW_USER_FUNCTIONS);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RW_USER_FUNCTIONS);
 
     /* close session should reset the login state */
     let ret = fn_close_all_sessions(testtokn.get_slot());
@@ -229,5 +239,6 @@ fn test_login_close_all() {
     };
     let ret = fn_get_session_info(session, &mut info);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(info.state, CKS_RW_PUBLIC_SESSION);
+    let info_state = info.state;
+    assert_eq!(info_state, CKS_RW_PUBLIC_SESSION);
 }

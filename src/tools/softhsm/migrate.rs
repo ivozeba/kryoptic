@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
-use libc;
 
 mod interface {
     #![allow(non_upper_case_globals)]
@@ -62,7 +61,13 @@ impl fmt::Display for Error {
     }
 }
 
-fn dl_error() -> String {
+#[cfg(target_os = "windows")]
+fn get_last_error() -> String {
+    unsafe {windows_sys::Win32::Foundation::GetLastError().to_string()}
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_last_error() -> String {
     let cstr = unsafe { libc::dlerror() };
     if cstr.is_null() {
         String::from("<none>")
@@ -79,14 +84,30 @@ struct FuncList {
     session: CK_SESSION_HANDLE,
 }
 
+#[cfg(target_os = "windows")]
+fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
+    unsafe {
+        std::mem::transmute(windows_sys::Win32::System::LibraryLoader::GetProcAddress(handle, name.as_ptr()))
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
+    let fname = CString::new(name).unwrap();
+    unsafe {
+        libc::dlsym(handle, fname.as_ptr())
+    }
+}
+
 impl FuncList {
     fn from_symbol_name(
         handle: *mut c_void,
         name: &str,
     ) -> Result<FuncList, String> {
-        let fname = CString::new(name).unwrap();
         let list_fn: CK_C_GetFunctionList = unsafe {
-            let ptr = libc::dlsym(handle, fname.as_ptr());
+
+            let ptr = get_symbol(handle, name);
+            
             if ptr.is_null() {
                 None
             } else {
@@ -99,7 +120,7 @@ impl FuncList {
         let mut fn_list: *mut CK_FUNCTION_LIST = std::ptr::null_mut();
         let rv = match list_fn {
             None => {
-                return Err(dl_error().to_string());
+                return Err(get_last_error());
             }
             Some(func) => unsafe { func(&mut fn_list) },
         };
@@ -1014,16 +1035,31 @@ struct Arguments {
     softhsm2_token: String,
 }
 
+#[cfg(target_os = "windows")]
+fn load_library(library_name: &str) -> *mut c_void {
+    unsafe {
+        windows_sys::Win32::System::LibraryLoader::LoadLibraryA(library_name.as_ptr())
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn load_library(library_name: &str) -> *mut c_void {
+    let soname = CString::new(library_name).unwrap();
+    let rtld_flags = libc::RTLD_LOCAL | libc::RTLD_NOW;
+    unsafe {
+        libc::dlopen(soname.as_c_str().as_ptr(), rtld_flags)
+    }
+}
+
 fn main() -> ExitCode {
     let args = Arguments::parse();
 
     /* Let's try to load the library */
-    let soname = CString::new(args.pkcs11_module).unwrap();
-    let rtld_flags = libc::RTLD_LOCAL | libc::RTLD_NOW;
-    let lib_handle =
-        unsafe { libc::dlopen(soname.as_c_str().as_ptr(), rtld_flags) };
+    let library_name = args.pkcs11_module;
+    let lib_handle = load_library(library_name.as_str());
+    
     if lib_handle.is_null() {
-        eprintln!("Failed to load pkcs11 module: {}", dl_error());
+        eprintln!("Failed to load pkcs11 module: {}", get_last_error());
         return ExitCode::from(0xFF);
     }
 

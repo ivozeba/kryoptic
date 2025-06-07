@@ -37,7 +37,8 @@ fn test_get_attr() {
         make_ptrs_template(&[(CKA_LABEL, std::ptr::null_mut(), 0)]);
     let ret = fn_get_attribute_value(session, handle, template.as_mut_ptr(), 1);
     assert_eq!(ret, CKR_OK);
-    assert_ne!(template[0].ulValueLen, 0);
+    let attribute_length = template[0].ulValueLen;
+    assert_ne!(attribute_length, 0);
 
     let data: &mut [u8] = &mut [0; 128];
     let mut template =
@@ -104,14 +105,16 @@ fn test_get_attr() {
     )]);
     let ret = fn_get_attribute_value(session, handle, template.as_mut_ptr(), 1);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(template[0].ulValueLen, 3);
+    let attribute_length = template[0].ulValueLen;
+    assert_eq!(attribute_length, 3);
 
     /* Invalid attributes for RSA keys should report as such in both rv and length */
     let mut template =
         make_ptrs_template(&[(CKA_EC_POINT, std::ptr::null_mut(), 0)]);
     let ret = fn_get_attribute_value(session, handle, template.as_mut_ptr(), 1);
     assert_eq!(ret, CKR_ATTRIBUTE_TYPE_INVALID);
-    assert_eq!(template[0].ulValueLen, CK_UNAVAILABLE_INFORMATION);
+    let attribute_length = template[0].ulValueLen;
+    assert_eq!(attribute_length, CK_UNAVAILABLE_INFORMATION);
 
     /* Valid attributes that are not present should report this only in length */
     let mut template = make_ptrs_template(&[(
@@ -121,7 +124,8 @@ fn test_get_attr() {
     )]);
     let ret = fn_get_attribute_value(session, handle, template.as_mut_ptr(), 1);
     assert_eq!(ret, CKR_OK);
-    assert_eq!(template[0].ulValueLen, CK_UNAVAILABLE_INFORMATION);
+    let attribute_length = template[0].ulValueLen;
+    assert_eq!(attribute_length, CK_UNAVAILABLE_INFORMATION);
 
     testtokn.finalize();
 }

@@ -362,7 +362,8 @@ fn test_hash_kdf() {
                 extract_template.len() as CK_ULONG,
             );
             assert_eq!(ret, CKR_OK);
-            assert_eq!(extract_template[0].ulValueLen, hopt.1);
+            let attribute_length = extract_template[0].ulValueLen;
+            assert_eq!(attribute_length, hopt.1);
 
             /* Key len too big */
             let derive_template = make_attr_template(
@@ -408,7 +409,8 @@ fn test_hash_kdf() {
                 extract_template.len() as CK_ULONG,
             );
             assert_eq!(ret, CKR_OK);
-            assert_eq!(extract_template[0].ulValueLen, hopt.1 - 10);
+            let attribute_length = extract_template[0].ulValueLen;
+            assert_eq!(attribute_length, hopt.1 - 10);
 
             /* No length but key type defined */
             let derive_template = make_attr_template(
@@ -442,7 +444,8 @@ fn test_hash_kdf() {
                 extract_template.len() as CK_ULONG,
             );
             assert_eq!(ret, CKR_OK);
-            assert_eq!(extract_template[0].ulValueLen, len);
+            let attribute_length = extract_template[0].ulValueLen;
+            assert_eq!(attribute_length, len);
         }
 
         /* Key type define and incompatible length */
@@ -504,7 +507,8 @@ fn test_hash_kdf() {
             extract_template.len() as CK_ULONG,
         );
         assert_eq!(ret, CKR_OK);
-        assert_eq!(extract_template[0].ulValueLen, 32);
+        let attribute_length = extract_template[0].ulValueLen;
+        assert_eq!(attribute_length, 32);
     }
 
     testtokn.finalize();
@@ -653,7 +657,8 @@ fn test_hkdf() {
             );
             assert_eq!(ret, CKR_OK);
             assert_eq!(class, obj_class);
-            assert_eq!(extract_template[1].ulValueLen, 32);
+            let attribute_length = extract_template[1].ulValueLen;
+            assert_eq!(attribute_length, 32);
 
             /* test that we can get correct indicators based on inputs */
             #[cfg(feature = "fips")]
@@ -782,7 +787,8 @@ fn test_hkdf() {
         extract_template.len() as CK_ULONG,
     );
     assert_eq!(ret, CKR_OK);
-    assert_eq!(extract_template[0].ulValueLen, len);
+    let attribute_length = extract_template[0].ulValueLen;
+    assert_eq!(attribute_length, len);
     assert_eq!(result, okm);
 
     testtokn.finalize();
