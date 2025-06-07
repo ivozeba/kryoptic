@@ -61,11 +61,14 @@ impl fmt::Display for Error {
     }
 }
 
+/// Calls GetLastError to retrieve the calling thread's last-error code value.
 #[cfg(target_os = "windows")]
 fn get_last_error() -> String {
     unsafe { windows_sys::Win32::Foundation::GetLastError().to_string() }
 }
 
+/// Calls dlerror to retrieve the most recent error that occurred from a call to one of the
+/// functions in the dlopen API.
 #[cfg(not(target_os = "windows"))]
 fn get_last_error() -> String {
     let cstr = unsafe { libc::dlerror() };
@@ -84,8 +87,9 @@ struct FuncList {
     session: CK_SESSION_HANDLE,
 }
 
+/// Calls GetProcAddress to retrieve the address of an exported function from the DLL handle.
 #[cfg(target_os = "windows")]
-fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
+fn get_symbol_address(handle: *mut c_void, name: &str) -> *mut c_void {
     unsafe {
         std::mem::transmute(
             windows_sys::Win32::System::LibraryLoader::GetProcAddress(
@@ -96,8 +100,9 @@ fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
     }
 }
 
+/// Calls dlsym to retrieve the address of the symbol in the shared object handle.
 #[cfg(not(target_os = "windows"))]
-fn get_symbol(handle: *mut c_void, name: &str) -> *mut c_void {
+fn get_symbol_address(handle: *mut c_void, name: &str) -> *mut c_void {
     let fname = CString::new(name).unwrap();
     unsafe { libc::dlsym(handle, fname.as_ptr()) }
 }
@@ -108,7 +113,7 @@ impl FuncList {
         name: &str,
     ) -> Result<FuncList, String> {
         let list_fn: CK_C_GetFunctionList = unsafe {
-            let ptr = get_symbol(handle, name);
+            let ptr = get_symbol_address(handle, name);
 
             if ptr.is_null() {
                 None
@@ -1037,6 +1042,8 @@ struct Arguments {
     softhsm2_token: String,
 }
 
+/// Calls LoadLibraryA to load the specified module and module specified dependencies into the
+/// address space of the calling process.
 #[cfg(target_os = "windows")]
 fn load_library(library_name: &str) -> *mut c_void {
     unsafe {
@@ -1046,6 +1053,7 @@ fn load_library(library_name: &str) -> *mut c_void {
     }
 }
 
+/// Calls dlopen to load the shared library.
 #[cfg(not(target_os = "windows"))]
 fn load_library(library_name: &str) -> *mut c_void {
     let soname = CString::new(library_name).unwrap();
