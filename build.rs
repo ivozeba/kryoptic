@@ -299,10 +299,12 @@ fn use_system_ossl(out_file: &Path) {
         let openssl_path = get_openssl_path();
         println!("cargo:rustc-link-search={}", openssl_path.to_string_lossy());
         "libcrypto"
+    //        "libcrypto-3-x64"
     } else {
         "crypto"
     };
     println!("cargo:rustc-link-lib={}", ar_name);
+    // println!("cargo:rustc-link-lib:dylib={}", ar_name);
     ossl_bindings(get_kryoptic_build_args(false), out_file);
 }
 
