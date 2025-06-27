@@ -135,3 +135,137 @@ jobs:
           path: |
             /var/cache/libdnf5
           key: ${{ runner.os }}-dnf-${{ steps.get-date.outputs.date }}
+  build-windows:
+    name: Windows Build
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        #        name: [ossl3, fips, release, dynamic, minimal, pqc]
+        name: [ossl3, release, dynamic, minimal, pqc]
+        db: [sqlitedb, nssdb] # FIXME: Add "memorydb" when it will be persistent
+    steps:
+      - name: Install Dependencies
+        run: |
+          function Winget-Install-Package {
+            [CmdletBinding()]
+            param (
+              [Parameter(Mandatory)]
+              [string]$PackageName,
+              [string]$InstallArgs
+            )
+          
+            winget list -q $PackageName | Out-Null
+            if (!$?) {
+              winget install --accept-package-agreements --accept-source-agreements $PackageName $InstallArgs
+            }
+          }
+
+          Winget-Install-Package -PackageName LLVM
+          Winget-Install-Package -PackageName Microsoft.VisualStudio.2022.BuildTools -InstallArgs "--force --override --wait --passive --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows10SDK.22000 --add Microsoft.VisualStudio.Workload.VCTools --includeOptional --includeRecommended"
+          
+          # Winget-Install-Package -PackageName ShiningLight.OpenSSL.Dev
+          # echo "KRYOPTIC_OPENSSL_SOURCES=$Env:Programfiles\OpenSSL-Win64" >> $env:GITHUB_ENV
+          
+          Winget-Install-Package -PackageName MSYS2.MSYS2
+          
+          Winget-Install-Package -PackageName StrawberryPerl
+          Add-Content $env:GITHUB_PATH "C:\strawberry\perl\bin\"
+          
+          Winget-Install-Package -PackageName nasm
+          Add-Content $env:GITHUB_PATH "C:\Program Files\NASM\"
+
+          # Download and extract sqlite dll
+          Invoke-WebRequest -Uri https://sqlite.org/2025/sqlite-dll-win-x64-3500100.zip -UseBasicParsing -OutFile $env:TEMP\sqlite.zip
+          Expand-Archive $env:TEMP\sqlite.zip -DestinationPath C:\sqlite -Force
+          echo "LIB=$env:LIB;C:\sqlite\" >> $env:GITHUB_ENV
+          Add-Content $env:GITHUB_PATH "C:\sqlite\"
+          
+          # Create sqlite static lib
+          cd C:\sqlite
+          Import-Module "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\"
+          lib /MACHINE:x64 /DEF:sqlite3.def
+          
+          $INCLUDE_VAR = "C:\Program Files\LLVM\lib\clang\20\include\;"
+          $INCLUDE_VAR += "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\;"
+          $INCLUDE_VAR += "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include;"
+          echo "INCLUDE=$INCLUDE_VAR" >> $env:GITHUB_ENV
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenSSL
+        id: ossl-setup
+        run: |
+          cd ..
+          git clone https://github.com/simo5/openssl.git
+          cd openssl
+          git checkout kryoptic_ossl35
+          perl.exe Configure VC-WIN64A enable-fips
+          Import-Module "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\" -DevCmdArguments "-arch=x64"
+          nmake
+
+          echo "KRYOPTIC_OPENSSL_SOURCES=$PWD" >> $env:GITHUB_ENV
+          echo "cacheid=${{ runner.os }}-ossl-$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore OpenSSL build
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ env.KRYOPTIC_OPENSSL_SOURCES }}
+          key: ${{ steps.ossl-setup.outputs.cacheid }}
+
+      - name: Generate lock file
+        run: cargo generate-lockfile
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            $HOME\.cargo\bin\
+            $HOME\.cargo\registry\index\
+            $HOME\.cargo\registry\cache\
+            $HOME\.cargo\git\db\
+            target\
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build & test
+        run: |
+          $FEATURES="${{ matrix.db }}"
+          $OPTS="--no-default-features"
+
+          if("${{ matrix.name }}" -eq "fips") {
+            $FEATURES="${FEATURES},fips"
+          } elseif  ("${{ matrix.name }}" -eq "ossl3") {
+            $FEATURES="${FEATURES},standard"
+          } elseif ("${{ matrix.name }}" -eq "release") {
+            $FEATURES="${FEATURES},standard"
+            $OPTS="--release"
+          } elseif ("${{ matrix.name }}" -eq "dynamic") {
+            $FEATURES="${FEATURES},standard,dynamic"
+            $OPTS="--release"
+          } elseif ("${{ matrix.name }}" -eq "minimal") {
+            $FEATURES="${FEATURES},dynamic"
+          } elseif ("${{ matrix.name }}" -eq "pqc") {
+            $FEATURES="${FEATURES},standard,pqc"
+          }
+
+          $KRYOPTIC_CONFIG_DIR = "$env:TEMP\kryoptic"
+
+          If(!(test-path -PathType container $KRYOPTIC_CONFIG_DIR)) {
+            New-Item -ItemType Directory -Path $KRYOPTIC_CONFIG_DIR
+          }
+
+          cp testdata\windows_test.conf $KRYOPTIC_CONFIG_DIR\token.conf
+
+          cargo build -vv $OPTS --features "$FEATURES"
+          cargo test -vv $OPTS --features "$FEATURES"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Build logs ${{ matrix.db }} ${{ matrix.name }}
+          path: |
+            target/debug/build/*/output
